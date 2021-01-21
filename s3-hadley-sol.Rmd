@@ -79,7 +79,7 @@ new_data.frame <- function (x = list(), names = character(), row.names = charact
 - Wie sähe ein Konstruktor `new_lm` für Objekte der Klasse `lm` aus? Warum wäre ein solcher Konstruktor vermutlich nicht besonders nützlich? 
 
 **Antwort:**  
-wie besprochen: Das Problem sind die sehr unterschiedlichen Skalen auf denen die Werte der Variablen liegen. Man sollte die Daten also erst standardisieren und dann die halfspacemass berechnen. 
+Der Output der `lm()` ist eine Liste mit sehr vielen Einträgen. Der Konstruktor prüft zwar den Typ des Objekts und den der Attribute, jedoch wird die Hauptaufgabe (Fitten des Modells, Berechnen der Residuen etc.)  in Helper-Funktionen gemacht. Der Konstruktor trägt also nicht viel zur Funktionalität des `lm()` bei.
 
 - Lesen Sie den Quellcode für `t()` und `t.test()`. Ist `t.test()` eine generische S3 Funktion oder eine S3 Methode? Was passiert **im Detail** wenn sie `t()` auf ein S3-Objekt mit Klasse `test` anwenden (s.u.)? Warum?
 ```r
