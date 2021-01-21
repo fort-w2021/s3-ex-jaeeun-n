@@ -1,0 +1,91 @@
+## Lektüre & Quiz: `S3` 
+
+Lesen Sie das [`S3`](https://adv-r.hadley.nz/s3.html) Kapitel von H. Wickham's *Advanced R*. 
+Bearbeiten Sie (mindestens) die folgenden von dort übernommenen/inspirierten Aufgaben:
+
+- Was tut die `as.data.frame.data.frame()` Methode? Warum ist das verwirrend? Wie können Sie derartige Verwirrung in Ihrem eigenen Code vermeiden?
+
+**Antwort:**  
+Die `as.data.frame.data.frame()` Methode überprüft ob ein Objekt, in diesem Fall ein Objekt aus der Klasse `data.frame`, ein `data.frame` ist und zwingt das Objekt zu einem `data.frame`, falls es keiner ist. Punkte stehen im S3 dafür, dass eine Methode einer generischen Funktion genutzt wird. In `as.data.frame.data.frame()` sind jedoch viele Punkte, die nicht in diesem Sinne genutzt werden. Um derartige Verwirrungen zu vermeiden, sollte der Name nur Punkte enthalten, wenn wirklich Methoden definiert sind, z.B. `as_data_frame.data_frame()`.
+
+
+- Beschreiben/erklären Sie das Verhalten dieses Codes:
+```r
+set.seed(1014)
+some_days <- as.Date("2019-11-24") + sample(10, 5)
+mean(some_days)
+# [1] "2019-11-30"
+mean(unclass(some_days))
+# [1] 18230.4
+```
+
+**Antwort:**  
+1) "Seed" für den Zufallszahlengenerator wird gesetzt.    
+2) Es werden 5 Zufallszahlen zwischen 1 und 10 gezogen. Der resultierende Vektor der Klasse `integer` wird zur Klasse `Date` gezwungen und die Elemente jeweils mit dem `as.Date("2019-11-24")` addiert. Dabei die zu `Date` passende Methode der generischen Funktion `+` verwendet. Der resultierende `Date` Vektor wird in `some_days`gespeichert.  
+3) Der Durchschnitt des Vektors `some_days` wird mithilfe der Methode `mean.Date()` berechnet.    
+4) Durch `unclass()` gehört der Input für `mean()` nicht mehr zur Klasse `Date`, sondern nur noch zum *base type* `double`. Daher wird `mean.default()` verwendet und der Output ist nun eine Gleitkommazahl.  
+
+
+- Welche Klasse hat `x` im folgenden Code? Auf welchem *base type* basiert diese Klasse? Welche Attribute nutzt sie und wie sind die mathematischen Eigenschaften von Verteilungsfunktionen hier konkret implementiert? 
+```r
+x <- ecdf(rpois(100, 10))
+x
+# Empirical CDF 
+# Call: ecdf(rpois(100, 10))
+#  x[1:15] =      1,      4,      5,  ...,     16,     17
+```
+
+**Antwort:**  
+`x` gehört zu der Klasse `ecdf`. `ecdf` basiert auf dem *base type* `closure`. Die Klasse nutzt die Attribute `class` und `call`. Erst wird der Inputvektor der Zufallsstichprobe geordnet, dann wird mithilfe der Funktion `approxfun()` eine Interpolation durchgeführt, bei der jeweils die einzigartigen Werte des Inputvektors mit ihrer kumulierten Summe in Form einer Treppenfuntion dargestellt werden. Durch die Funktionsargumente `yleft = 0` und `yright = 1` wird sichergestellt, dass die Funktionswerte bei 0 beginnen und bei 1 enden.  
+
+
+- Schreiben Sie einen neuen low-level Konstruktor für `data.frame`-Objekte (ohne die Funktionen `as.data.frame()` oder `data.frame()` zu benutzen, selbstverständlich). Machen Sie sich zunächst klar: Auf welchem *base type* basiert `data.frame`? Welche Attribute nutzt `data.frame`? Welche Restriktionen gelten für die verschiedenen Einträge und Attribute?  
+    *Hinweis*: Sehen Sie sich dafür zunächst mal so etwas wie `str(unclass(<irgend ein data.frame>))` an.
+    
+**Antwort:**
+```r
+new_data.frame <- function (x = list(), names = character(), row.names = character()) {
+  stopifnot(is.list(x))
+  stopifnot(is.character(names))
+  stopifnot(is.character(row.names))
+  
+  columns_are_atomic <- all(sapply(x, is.atomic)
+  column_lengths_are_equal <- length(unique(sapply(x, length))) == 1
+  if (!(columns_are_atomic & column_lengths_are_equal)) {
+    stop(
+      "Elements of 'x' must be atomic vectors with identical length", 
+      .call = FALSE)
+    )
+  }
+  
+  structure(
+    x, 
+    names = names, 
+    class = "data.frame", 
+    row.names = row.names
+  )
+}
+```
+
+
+- Kategorisieren Sie die Klassen der Rückgabe-Objekte von `lm(), factor(), table(), as.Date(), as.POSIXct(), ecdf(), ordered(), I()` in die Klassentypen *vector class*, *record style class*, *scalar class* die in *Advanced R* beschrieben  werden.
+
+**Antwort:**  
+*vector class*: `factor()`, `as.Date()`, `ordered()`, `table()`  
+*record style class*: `as.POSIXct()`,  
+*scalar class*: `lm()`, `ecdf()`, `I()`  
+
+
+- Wie sähe ein Konstruktor `new_lm` für Objekte der Klasse `lm` aus? Warum wäre ein solcher Konstruktor vermutlich nicht besonders nützlich? 
+
+**Antwort:**  
+wie besprochen: Das Problem sind die sehr unterschiedlichen Skalen auf denen die Werte der Variablen liegen. Man sollte die Daten also erst standardisieren und dann die halfspacemass berechnen. 
+
+- Lesen Sie den Quellcode für `t()` und `t.test()`. Ist `t.test()` eine generische S3 Funktion oder eine S3 Methode? Was passiert **im Detail** wenn sie `t()` auf ein S3-Objekt mit Klasse `test` anwenden (s.u.)? Warum?
+```r
+x <- structure(1:10, class = "test")
+t(x)
+```
+
+**Antwort:**  
+`t.test()` ist eine generische S3 Funktion. Im Beispiel ist `x` ein Vektor vom *base type* `integer`. `t()` konvertiert ihn zu einer Matrix mit einer Spalte und gibt entsprechend eine Matrix mit einer Zeile aus. `x` ist zwar aus der Klasse `test`, `t()` hat jedoch keine Methode für diese Klasse. Daher wird lediglich das Attribut `class` von `x` weitergegeben und `t()` behandelt `x` nur seinem *base type* entsprechend. 
